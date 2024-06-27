@@ -1,137 +1,113 @@
+import axios from "axios";
+const urlBack = "http://localhost:8093/clientes";
+
 export async function getClientes() {
-  //TODO: Logica a modificar
-  // Se debe realizar la request al backend para obtener los clientes
-
-  if (!localStorage.getItem("clientes")) {
-    const clientes = getListadoClientesManual();
-    localStorage.setItem("clientes", JSON.stringify(clientes));
+  try {
+    const response = await axios.get(urlBack);
+    if (response && response.data) {
+      const clientesObtenidos = response.data;
+      const clientes = generarListadoClientes(clientesObtenidos);
+      return clientes;
+    } else {
+      throw new Error("No se recibió una respuesta válida del servidor");
+    }
+  } catch (error) {
+    handleAxiosError(error);
   }
-
-  const simularError = false;
-  if (simularError) {
-    throw new Error("Error al obtener los clientes");
-  }
-
-  await esperar(500);
-
-  //Estos son los clientes obtenidos de la "response"
-  let clientesObtenidos = JSON.parse(localStorage.getItem("clientes"));
-
-  //
-  //Fin logicas a modificar
-  //
-
-  //Con esto generamos un listado de clientes con la estructura que necesitamos
-  const clientes = generarListadoClientes(clientesObtenidos);
-
-  return clientes;
 }
 
-export async function createCliente(
-  nombre,
-  apellido,
-  cuitDni,
-  razonSocial,
-  tipoCliente
-) {
-  //! IMPORTANTE: tipoCliente y razonSocial son IDs, no un objeto completo
-
-  //TODO: Logica a modificar
-  // Se debe realizar la request al backend para crear el cliente
-
-  const simularError = false;
-  if (simularError) {
-    throw new Error("Error al crear el cliente");
+export async function createCliente(nombre, apellido, dni, razonSocial, tipoCliente) {
+  try {
+    const clienteDTOEntrada = {
+      nombre,
+      apellido,
+      dni,
+      razonSocial,
+      tipoCliente,
+    };
+    const response = await axios.post(urlBack, clienteDTOEntrada);
+    return response.data;
+  } catch (error) {
+    handleAxiosError(error);
   }
-
-  console.log("razonSocial");
-  console.log(razonSocial);
-  const razonSocialObj = await getRazonesSociales().then((razones) =>
-    razones.find((razon) => razon.id === parseInt(razonSocial))
-  );
-  console.log(razonSocialObj);
-  const tipoClienteObj = await getTipoClientes().then((tipos) =>
-    tipos.find((tipo) => tipo.id === parseInt(tipoCliente))
-  );
-  const clientes = await getClientes();
-  const newCliente = {
-    id: clientes.length + 1,
-    nombre,
-    apellido,
-    cuitDni,
-    razonSocial: razonSocialObj,
-    tipoCliente: tipoClienteObj,
-  };
-  clientes.push(newCliente);
-  localStorage.setItem("clientes", JSON.stringify(clientes));
-  //
 }
 
-export async function editCliente(
-  id,
-  nombre,
-  apellido,
-  cuitDni,
-  razonSocial,
-  tipoCliente
-) {
-  const simularError = false;
-  if (simularError) {
-    throw new Error("Error al editar el cliente");
+export async function editCliente(id, nombre, apellido, dni, razonSocial, tipoCliente) {
+  try {
+    const clienteDTOEntrada = {
+      activo: null,
+      nombre: nombre || null,
+      apellido: apellido || null,
+      cuit: null,
+      razonSocial: razonSocial || null,
+      tipoDNI: null,
+      dni: dni || null,
+      tipoCliente: tipoCliente || null,
+      categoriaClienteId: null,
+      puntosCliente: null,
+      medioContactoId: null,
+      medioPagoId: null,
+      historicoCategoriasIds: null,
+      cuentaId: null
+    };
+    const response = await axios.put(`${urlBack}/${id}`, clienteDTOEntrada);
+    return response.data;
+  } catch (error) {
+    if (error.response) {
+      console.error("Error de respuesta del servidor:", error.response.data);
+      throw new Error("Error de respuesta del servidor: " + JSON.stringify(error.response.data, null, 2));
+    } else if (error.request) {
+      console.error("No se recibió respuesta del servidor:", error.request);
+      throw new Error("No se recibió respuesta del servidor, revise la conexión de red.");
+    } else {
+      console.error("Error al procesar la solicitud:", error.message);
+      throw new Error("Error al procesar la solicitud: " + error.message);
+    }
   }
-  const clientes = await getClientes();
-  const index = clientes.findIndex((cliente) => cliente.id === id);
-  const razonSocialObj = await getRazonesSociales().then((razones) =>
-    razones.find((razon) => razon.id === parseInt(razonSocial))
-  );
-  const tipoClienteObj = await getTipoClientes().then((tipos) =>
-    tipos.find((tipo) => tipo.id === parseInt(tipoCliente))
-  );
-  clientes[index] = {
-    id,
-    nombre,
-    apellido,
-    razonSocial: razonSocialObj,
-    cuitDni,
-    tipoCliente: tipoClienteObj,
-  };
-  localStorage.setItem("clientes", JSON.stringify(clientes));
 }
 
 export async function deleteCliente(id) {
-  //TODO: Logica a modificar
-
-  const simularError = false;
-  if (simularError) {
-    throw new Error("Error al eliminar el cliente");
+  try {
+    const response = await axios.delete(`${urlBack}/${id}`);
+    return response.data;
+  } catch (error) {
+    handleAxiosError(error);
   }
-  const clientes = await getClientes();
-  const newClientes = clientes.filter((cliente) => cliente.id !== parseInt(id));
-  localStorage.setItem("clientes", JSON.stringify(newClientes));
+}
+
+function handleAxiosError(error) {
+  if (error.response) {
+    console.error("Error de respuesta del servidor:", JSON.stringify(error.response.data, null, 2));
+    throw new Error("Error de respuesta del servidor: " + JSON.stringify(error.response.data, null, 2));
+  } else if (error.request) {
+    console.error("No se recibió respuesta del servidor:", error.request);
+    throw new Error("No se recibió respuesta del servidor, revise la conexión de red.");
+  } else {
+    console.error("Error al procesar la solicitud:", error.message);
+    throw new Error("Error al procesar la solicitud: " + error.message);
+  }
 }
 
 function generarListadoClientes(clientesObtenidos) {
   return clientesObtenidos.map((cliente) => {
     return {
-      //Aca se mapean los campos que necesitamos para mostrar en la tabla
       id: cliente.id,
       nombre: cliente.nombre,
       apellido: cliente.apellido,
       razonSocial: {
-        id: cliente.razonSocial.id,
-        razonSocial: cliente.razonSocial.razonSocial,
+        id: cliente.id,
+        razonSocial: cliente.razonSocial,
       },
-      cuitDni: cliente.cuitDni,
+      cuitDni: cliente.dni,
       tipoCliente: {
-        id: cliente.tipoCliente.id,
-        tipoCliente: cliente.tipoCliente.tipoCliente,
+        id: cliente.id,
+        tipoCliente: cliente.tipoCliente,
       },
     };
   });
 }
 
 export async function getRazonesSociales() {
-  //TODO: Logica a modificar. Obtener las razones sociales del backend
   await esperar(200);
   return [
     {
@@ -146,7 +122,6 @@ export async function getRazonesSociales() {
 }
 
 export async function getTipoClientes() {
-  //TODO: Logica a modificar. Obtener los tipos de clientes del backend
   await esperar(200);
   return [
     {
@@ -161,7 +136,7 @@ export async function getTipoClientes() {
 }
 
 function esperar(ms) {
-  return new Promise((resolve, reject) => {
+  return new Promise((resolve) => {
     setTimeout(() => {
       resolve(`Resuelto después de ${ms} milisegundos`);
     }, ms);
@@ -242,3 +217,4 @@ function getListadoClientesManual() {
     },
   ];
 }
+
